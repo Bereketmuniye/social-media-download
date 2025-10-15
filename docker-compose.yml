@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  social-downloader-bot:
+    build: .
+    container_name: social-downloader-bot
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=info
+      - BOT_TOKEN=${BOT_TOKEN}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-2000000000}
+      - DOWNLOAD_PATH=${DOWNLOAD_PATH:-./downloads}
+    volumes:
+      - download_cache:/app/downloads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  download_cache:

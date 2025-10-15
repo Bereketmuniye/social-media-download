@@ -1,0 +1,11 @@
+target/
+.git/
+.gitignore
+README.md
+.dockerignore
+.env
+*.log
+downloads/
+Dockerfile
+docker-compose.yml
+railway.toml
