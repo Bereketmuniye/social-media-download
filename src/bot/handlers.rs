@@ -6,7 +6,7 @@ use anyhow::Result;
 
 #[derive(BotCommand, Clone)]
 #[command(rename = "lowercase", description = "Supported commands:")]
-pub enum BotCommand {
+pub enum Command {
     #[command(description = "Start the bot")]
     Start,
     #[command(description = "Show help message")]
@@ -18,10 +18,10 @@ pub enum BotCommand {
 pub async fn handle_commands(
     bot: Bot,
     msg: Message,
-    cmd: BotCommand,
+    cmd: Command,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match cmd {
-        BotCommand::Start => {
+        Command::Start => {
             let welcome_text = r#"
 🤖 **Social Media Downloader Bot**
 
@@ -42,10 +42,10 @@ I'll download the video and send it to you!
             "#;
 
             bot.send_message(msg.chat.id, welcome_text)
-                .parse_mode(teloxide::types::ParseMode::Markdown)
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
         }
-        BotCommand::Help => {
+        Command::Help => {
             let help_text = r#"
 **How to use:**
 1. Send any supported social media URL
@@ -62,10 +62,10 @@ I'll download the video and send it to you!
             "#;
 
             bot.send_message(msg.chat.id, help_text)
-                .parse_mode(teloxide::types::ParseMode::Markdown)
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
         }
-        BotCommand::Status => {
+        Command::Status => {
             bot.send_message(msg.chat.id, "✅ Bot is running and ready to download!")
                 .await?;
         }
@@ -83,15 +83,7 @@ pub async fn handle_download_request(
     let message_id = msg.id;
     let url = msg.text().unwrap_or("").to_string();
 
-    log::info!("Received download request from {}: {}", chat_id, url);
-
-    // Validate URL
-    if !is_valid_url(&url) {
-        bot.send_message(chat_id, "❌ Please provide a valid URL from supported platforms (YouTube, TikTok, Instagram, Twitter/X)")
-            .reply_to_message_id(message_id)
-            .await?;
-        return Ok(());
-    }
+    log::info!("Received download request: {}", url);
 
     // Send initial processing message
     let processing_msg = bot.send_message(chat_id, "⏳ Processing your request...")
@@ -113,53 +105,24 @@ pub async fn handle_download_request(
             // Send the video file
             let file = InputFile::file(&result.file_path);
             
-            match bot.send_video(chat_id, file)
+            bot.send_video(chat_id, file)
                 .caption(format!("📹 {}", result.file_name))
                 .reply_to_message_id(message_id)
-                .await
-            {
-                Ok(_) => {
-                    // Update to completed
-                    bot.edit_message_text(chat_id, processing_msg.id, "✅ Download completed!")
-                        .await?;
-                }
-                Err(e) => {
-                    log::error!("Failed to send video: {}", e);
-                    bot.edit_message_text(chat_id, processing_msg.id, "❌ Failed to send video file")
-                        .await?;
-                }
-            }
+                .await?;
+
+            // Update to completed
+            bot.edit_message_text(chat_id, processing_msg.id, "✅ Download completed!")
+                .await?;
 
             // Cleanup downloaded file
-            if let Err(e) = downloader.cleanup_file(&result.file_path).await {
-                log::warn!("Failed to cleanup file {}: {}", result.file_path, e);
-            }
+            let _ = downloader.cleanup_file(&result.file_path).await;
         }
         Err(e) => {
-            log::error!("Download failed: {}", e);
-            let error_msg = if e.to_string().contains("File too large") {
-                "❌ File too large. Maximum size is 2GB.".to_string()
-            } else if e.to_string().contains("No suitable format") {
-                "❌ No downloadable video found or video is too large.".to_string()
-            } else {
-                format!("❌ Download failed: {}", e)
-            };
-            
+            let error_msg = format!("❌ Download failed: {}", e);
             bot.edit_message_text(chat_id, processing_msg.id, error_msg)
                 .await?;
         }
     }
 
     Ok(())
-}
-
-fn is_valid_url(url: &str) -> bool {
-    url.starts_with("http") && (
-        url.contains("youtube.com") ||
-        url.contains("youtu.be") ||
-        url.contains("tiktok.com") ||
-        url.contains("instagram.com") ||
-        url.contains("twitter.com") ||
-        url.contains("x.com")
-    )
 }

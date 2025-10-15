@@ -1,8 +1,7 @@
 use crate::models::{DownloadRequest, DownloadResult, YtDlpVideoInfo};
-use crate::utils::{sanitize_filename, get_file_extension};
+use crate::utils::sanitize_filename;
 use anyhow::Result;
 use std::path::PathBuf;
-use std::process::Stdio;
 use tokio::process::Command;
 use tokio::fs;
 use serde_json;
@@ -124,19 +123,18 @@ impl Downloader {
             return Err(anyhow::anyhow!("yt-dlp download failed"));
         }
 
-        // Find the downloaded file
+        // Find the downloaded file - simplified approach
         let files = fs::read_dir(&self.download_path).await?;
         let mut latest_file = None;
         let mut latest_time = std::time::SystemTime::UNIX_EPOCH;
 
-        for entry in files {
-            if let Ok(entry) = entry {
-                if let Ok(metadata) = entry.metadata().await {
-                    if let Ok(modified) = metadata.modified() {
-                        if modified > latest_time {
-                            latest_time = modified;
-                            latest_file = Some(entry.path());
-                        }
+        let mut entries = files;
+        while let Some(entry) = entries.next_entry().await? {
+            if let Ok(metadata) = entry.metadata().await {
+                if let Ok(modified) = metadata.modified() {
+                    if modified > latest_time {
+                        latest_time = modified;
+                        latest_file = Some(entry.path());
                     }
                 }
             }

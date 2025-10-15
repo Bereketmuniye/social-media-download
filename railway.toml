@@ -1,0 +1,12 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[env]
+BOT_TOKEN.type = "secret"
+MAX_FILE_SIZE = "2000000000"
+DOWNLOAD_PATH = "./downloads"
+RUST_LOG = "info"

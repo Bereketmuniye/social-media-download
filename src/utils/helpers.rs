@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::process::Stdio;
 use tokio::process::Command;
 use anyhow::Result;
@@ -19,20 +18,6 @@ pub async fn check_ytdlp_installed() -> Result<bool> {
         .await;
 
     Ok(output.is_ok())
-}
-
-pub fn get_file_extension(url: &str) -> String {
-    if url.contains("youtube.com") || url.contains("youtu.be") {
-        "mp4".to_string()
-    } else if url.contains("tiktok.com") {
-        "mp4".to_string()
-    } else if url.contains("instagram.com") {
-        "mp4".to_string()
-    } else if url.contains("twitter.com") || url.contains("x.com") {
-        "mp4".to_string()
-    } else {
-        "mp4".to_string()
-    }
 }
 
 pub async fn get_video_info(url: &str) -> Result<String> {

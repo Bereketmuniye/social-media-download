@@ -16,18 +16,9 @@ pub async fn run(bot: Bot) {
 
     let downloader = Downloader::new(download_path, max_file_size);
 
-    let handler = Update::filter_message()
-        .branch(
-            dptree::entry()
-                .filter_command::<BotCommand>()
-                .endpoint(handle_commands)
-        )
-        .branch(
-            dptree::filter(|msg: Message| {
-                msg.text().map(|text| is_social_media_url(text)).unwrap_or(false)
-            })
-            .endpoint(handle_download_request)
-        );
+    let handler = dptree::entry()
+        .branch(Update::filter_message().filter_command::<Command>().endpoint(handle_commands))
+        .branch(Update::filter_message().filter(text_contains("http")).endpoint(handle_download_request));
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![downloader])
@@ -37,7 +28,7 @@ pub async fn run(bot: Bot) {
         .await;
 }
 
-fn is_social_media_url(text: &str) -> bool {
+fn text_contains(text: &str) -> bool {
     text.contains("youtube.com") ||
     text.contains("youtu.be") ||
     text.contains("tiktok.com") ||
